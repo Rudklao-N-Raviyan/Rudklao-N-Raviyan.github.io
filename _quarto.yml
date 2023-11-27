@@ -3,7 +3,7 @@ project:
   output-dir: docs
 
 website:
-  title: "Rudklao-N-Raviyan.github.io"
+  title: "Newz Raviyan"
   navbar:
     left:
       - href: index.qmd
@@ -12,8 +12,15 @@ website:
 
 format:
   html:
-    theme: cosmo
-    css: styles.css
+    theme: 
+    - minty
+    - custom.scss
+    # mainfont: 
+    # fontsize: 
+    # fontcolor: 
+    linkcolor: '#FFC4C4'
+    # monofont: 
+    #css: styles.css
     toc: true
 
 
