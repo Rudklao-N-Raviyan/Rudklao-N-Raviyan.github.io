@@ -8,7 +8,16 @@ website:
     left:
       - href: index.qmd
         text: Home
-      - about.qmd
+      - href: STATS330_A4.html
+        text: STATS330 Statistical modelling
+      - href: STATS220_A4.html
+        text: STATS220 Data visualization and animation
+      - href: STATS369_A2.html
+        text: STATS369 on Data Cleaning and visualization
+      - href: STATS369_A4.html
+        text: STATS369 on Prediction using various models
+      - href: STATS380_A4.html
+        text: STATS380 Data cleaning
 
 format:
   html:

@@ -1,0 +1,271 @@
+---
+title: "Stats 330"
+author: "Rudklao Raviyab"
+editor: visual
+---
+
+Assignment Showcase:
+
+Stats 330: Statistical Modelling
+
+```{r}
+library(s20x)
+library(mgcv)
+library(dplyr)
+library(MuMIn)
+library(glmtoolbox)
+library(statmod)
+library(MASS)
+library(ggplot2)
+```
+
+# Question 1
+
+## Researchers wanted to use this dataset to explore 1) how are the rate of death or hospitalization due to heart failure and the ejection fraction related? and 2) is this relationship the same for people taking Digoxin and placebo? Build a descriptive model to answer the question. Your analysis may involve data exploration, model building, model checking and interpretation.
+
+```{r}
+
+path = file.choose()
+data.df = read.csv(path)
+summary(data.df[,c("dwhf","ejf_per","trtmt1")])
+
+plot(dwhf ~ ejf_per, data = data.df)
+q1=data.df[,c("dwhf","ejf_per","trtmt1")]
+str(q1)
+q1$trtmt1=factor(q1$trtmt1,levels = c(0,1),labels=c("Placebo","Digoxin"))
+
+tmp=q1 %>% group_by(trtmt1,ejf_per) %>% summarise(prop = mean(dwhf),event=sum(dwhf), n = n())
+print(tmp)
+ggplot(tmp,aes(x=ejf_per,y=prop, color=trtmt1))+geom_point()+xlab("Ejection Fraction") + labs(color='Treatment')+ ylab("Probability")
+```
+
+First we start exploring the data by looking at the summary and types of variables of our interested variables. We gathered that ejf_per is an integer while trtmt1 is the categorical data. The dwhf variable is described by R that it is an integer but infact, it is a categorical factor as it takes the value of either 0 or 1. From the raw data, we are interested in the treatment the patient actually received because patients may be allocate to placebo or Digoxin group but they may actually received different treatment from their allocated group, hence treatment1 variable was used in this analysis.
+
+Then we plot a graph to see the relationship between the ejf_per and dwhf. Graph showed that the scatters are either at 0 or 1 hence, the response variable(dwhf) have a binomial distribution. Next we grouped the data into ejeculation fraction rate and treatment received. From the graph, we can see that the lower the ejection fraction, the higher probability of death with health failure. The trend exponentialy decreased as the ejection fraction increases however, both placebo and digoxin group seems to performed similary.
+
+## plot and explore data, model selections
+
+```{r}
+ejection.fit1 = glm(dwhf ~ ejf_per + trtmt1, data = data.df, family = "binomial")
+
+summary(ejection.fit1)
+```
+
+After the data exploration, we are continuing with model selection. First we fitted the interested variable, the treatment patient received, and the response variable, death with hearth failure (ejection.fit1). It is the full model and from the summary, all the variables included in the model have significant relationship with the response variable due to the p-value.
+
+```{r}
+data.gam.fit = gam(dwhf ~ s(ejf_per) + trtmt1 , family = "binomial", data = data.df)
+summary(data.gam.fit)
+plot(data.gam.fit)
+
+ejection.gam.fit2 = glm(dwhf ~ ejf_per + I(ejf_per^2) + trtmt1 , family = "binomial", data = data.df)
+summary(ejection.gam.fit2)
+confint(ejection.gam.fit2)
+```
+
+Next we explore the model if there are any quadratic relationship requirement. We use gam funciton to do so (data.gam.fit). From the summary of the gam plot and the plot itself, we can see that, we can almost fit the straightline between the dotted lines but the edf is greater than 1, hence it suggests that we indeed need a quadratic term for the ejf_per variable. From the summary, the p-value for the 2nd order quadratic term on ejf_per variable is significant.
+
+```{r}
+ejection.fit2 = glm(dwhf ~ (ejf_per + I(ejf_per^2)) * trtmt1, data = data.df, family = "binomial")
+summary(ejection.fit2)
+
+
+ejection.fit3 = glm(dwhf ~ ejf_per * trtmt1 + I(ejf_per^2), data = data.df, family = "binomial")
+summary(ejection.fit3)
+
+```
+
+Lastly, we are interested in the interaction term between the ejf_per variable and the trtmt1 by fitting the ejection.fit2 model. From the summary, the p-value for the model is insignificant and we will not include any interaction term in our model and hence, our final model is ejection.gam.fit2.
+
+```{r}
+plot(predict(ejection.gam.fit2),residuals(ejection.gam.fit2, type = "deviance"))
+plot(predict(ejection.gam.fit2), qresiduals(ejection.gam.fit2))
+
+
+set.seed(123); Nsim = 1e3
+ejection.devs = numeric(Nsim); nr = nrow(data.df)
+for (i in 1:Nsim){
+  mos_bin = rbinom(nr, prob = predict(ejection.gam.fit2, type = "response"), 1)
+  mod_i = glm(mos_bin ~ ejf_per + I(ejf_per^2) + trtmt1, data = data.df, family = "binomial")
+  ejection.devs[i] = deviance(mod_i)
+  
+}
+cat("GOF parametric bootstrap p-value for binomial model is") 
+1-mean(ejection.devs < deviance(ejection.gam.fit2))
+```
+
+After our final model selection, we conduct the Goodness of fit and model assumption via randomised quantile residual plot due to the data being sparse. It showed an approximate normal distribution scatters with small fraction of scatters greater than +/- 3 on y-axis. After the assumption is satisfied, we check the goodness of fit via parametric bootstrap where the p-value showed that this model is adequate.
+
+## Conclusion
+
+From the model selection, our final model is:
+
+\$ logit(\\mu_i) = \\beta_0 + \\beta1 \\times ejf_i + \\beta_2 \\times ejf\\\_per_i\^2 + \\beta_3 \\times treatment_i \$ where \$ Y \~ Binomial (n_i, p_i) \$
+
+Where the \$ logit(\\mu_i) \$ is the log odds of participant death or hospitalization due to heath failure. \$ ejf\\\_ per \$ is the ejection fraction (in percent) and \$ \\beta_3 \$ is a dummy variable that take the value of 1 when treatment_i is Dignoxin and 0 when the treatment is placebo.
+
+According to our research questions on how are the rate of death or hospitalization due to heart failure and the ejection fraction related. From out study, we can condluded that the relationship is quadratic and another question is whrher the relationship is the same for people taking Dignoxin and placebo. From the study, it seems to be that, if the participant received the Dignoxin treatment, the log odds of death or hospitalization is decrease by 0.38.
+
+# Question 2
+
+Researchers were mainly interested in evaluating the causal relationships between treatment (Digoxin vs placebo) and death/hospitalization due to heart failure. They hypothesized that age, gender, ejection fraction, history of diabetes and previous digoxin use can affect the mortality and hospitalization rates. It was also hypothesized that some unknown personal characteristics can affect the treatment the patients actually received and the rate of death/hospitalization due to heart failure.
+
+## Conduct an appropriate analysis to access whether taking digoxin can change the rate of death or hospitalization due to heart failure. Youranalysis may involve data exploration, model building, model checking and interpretation.
+
+```{r}
+data.df = read.csv(path)
+
+data.df$trtmt1 = factor(data.df$trtmt1, levels = c(0,1), labels = c("Placebo", "Dignoxin"))
+data.df$trtmt = factor(data.df$trtmt, levels = c(0,1), labels = c("Placebo", "Dignoxin"))
+data.df$sex = factor(data.df$sex, levels = c(1,2), labels = c("Men", "Women"))
+data.df$diabetes = factor(data.df$diabetes, levels = c(0,1), labels = c("Normal", "Diabetes"))
+data.df$diguse = factor(data.df$diguse, levels = c(0,1), labels = c("No", "Yes"))
+
+
+data.age=data.df %>% group_by(trtmt,age) %>% summarise(prop = mean(dwhf),event=sum(dwhf), n = n())
+ggplot(data.age,aes(x=age,y=prop, color=trtmt))+geom_point()+xlab("age") + labs(color='Treatment')+ ylab("Probability")
+
+
+data.ejf=data.df %>% group_by(trtmt,ejf_per) %>% summarise(prop = mean(dwhf),event=sum(dwhf), n = n())
+ggplot(data.ejf,aes(x=ejf_per,y=prop, color=trtmt))+geom_point()+xlab("ejeculation fraction") + labs(color='Treatment')+ ylab("Probability")
+
+
+data.sex=data.df %>% group_by(trtmt,sex) %>% summarise(prop = mean(dwhf))
+print(data.sex)
+data.diabetes=data.df %>% group_by(trtmt, diabetes) %>% summarise(prop = mean(dwhf))
+print(data.diabetes)
+data.dig=data.df %>% group_by(trtmt, diguse) %>% summarise(prop = mean(dwhf))
+print(data.dig)
+```
+
+First we explore the data to see the possible relationships between the explanatory variables and the outcome. It seems to be that the age in each Placebo and Dignoxin group all have similar possibility of death from heath failure. Similar to the ejection fraction but we can see that the trend is exponentially decreased as the ejection fraction increase so the lower the ejection fraction, the higher the possibility of death form heath failure. However, the placebo and Dignoxin group seems to perform similarly. As for the gender, the probability of death by heath failure seems to be similar whether the participants are male or female and whether the receive Placebo or Dignoxin. Howver, the probability of death from heath failure seems to be lower if the participants do not have diabetes and in Dignoxin group. As fro the previous use of Dignoxin, if the participants has no previous history of Dignoxin use regardless of what treatment group they are allocated to, the probability of death from heath failure seems to be lower and is even more lower then allocate to Dignoxin and similar trend in the previous use of Dignoxin.
+
+```{r}
+data.gam.fit = gam(dwhf ~ s(ejf_per) + s(age) + trtmt + sex + diabetes + diguse, family = "binomial", data = data.df)
+summary(data.gam.fit)
+plot(data.gam.fit, page = 1, shade=T)
+
+
+data.fit1 = glm(dwhf ~ ejf_per + age + trtmt + sex + diabetes + diguse, family = "binomial", data = data.df)
+summary(data.fit1)
+
+data.fit2 = glm(dwhf ~ ejf_per + I(ejf_per^2) + age + trtmt + sex + diabetes + diguse, family = "binomial", data = data.df)
+summary(data.fit2)
+
+anova(data.fit1, data.fit2, test = "Chisq")
+
+data.fit3 = glm(dwhf ~ (ejf_per + I(ejf_per^2))*trtmt + age + trtmt + sex + diabetes*trtmt + diguse, family = "binomial", data = data.df)
+summary(data.fit3)
+
+
+options(na.action = "na.fail")
+all.fits = dredge(data.fit3)
+head(all.fits)
+
+model.fit1 = get.models(all.fits, 1)[[1]]
+summary(model.fit1)
+
+model.fit2 = get.models(all.fits, 2)[[1]]
+summary(model.fit2)
+
+model.fit3 = get.models(all.fits, 3)[[1]]
+summary(model.fit3)
+
+model.fit4 = get.models(all.fits, 4)[[1]]
+summary(model.fit4)
+
+model.fit5 = get.models(all.fits, 5)[[1]]
+summary(model.fit5)
+
+anova(model.fit4, data.fit3, test = "Chisq")
+summary(data.fit3)
+summary(model.fit4)
+predictions = predict(model.fit4, type = "response")
+
+set.seed(1234)
+Nsim = 1e4
+nb.devs = numeric(Nsim); nr = nrow(data.df)
+for (i in 1:Nsim){
+  out = rbinom(nr, prob = predict(model.fit4, type = "response"), 1)
+  data.df$out = out
+  mod_i = glm(out ~ diabetes + diguse + ejf_per + I(ejf_per^2) + 
+    trtmt + diabetes*trtmt + ejf_per*trtmt + 1, family = "binomial", data = data.df)
+  nb.devs[i] = deviance(mod_i)
+}
+cat("GOF parametric bootstrap p=value for the model is ")
+1 - mean(nb.devs < deviance(model.fit4))
+
+plot(predict(model.fit4), qresiduals(model.fit4))
+```
+
+After we explore the possible relationships with the explanatory variables, we are interested to see if there are any quadratic relationships. From the gam plot(data.gam.fit), we can see that the edf of ejf_per is 2.4 while age is 1 so we need a quadratic term for ejf_per variable. We fitted the model with quadratic term (data.fit2) Comparing the AIC score between the the model without the quadratic term (data.fit1), we can see that the AIC score is smaller when there is a quadratic term for ejf_per variable.
+
+Next we are interested in whether there are interaction terms between different variables. From the data exploration, we can see that there are possible interactions between treatment with ejf_per, Diabetes and previous Dignoxin use. From the dredge function, we tried to find the best model according to the AIC scores, we selected the best 5 models and evaluted the p-values of each variables selected by the dredge function. We decided to select model 479 which is the 4th best model (model.fit4) based on the data exploration that the treatment group and ejection fraction seems to have interaction. There is a better model that included the mentioned interaction but it also included sex which from the p-value, it seems to have insignificant relationship with the dwhf so we decided to pick this model.
+
+we conducted the model assumption and goodness of fit via randomised quantile residual plots as the data is sparse and parametric bootstrap. The randomised quantile residule showed an approximately normal distribution with small fraction of scatters over +/- 3 magnitude in y-axis. The p-value generated from parametric bootstrap suggests that there is no evidence model inadequate.
+
+```{r}
+library(emmeans)
+summary(model.fit4)
+odds = exp(model.fit4$coefficients)
+odds
+ORs=exp(confint((model.fit4)))
+ORs
+
+compare1 = emmeans(model.fit4, pairwise  ~ diabetes * trtmt, type = "response")
+compare1$contrasts
+tmp = summary(compare1$contrasts)
+
+p1 = emmip (model.fit4, trtmt ~ ejf_per *diabetes, 
+at = list(ejf_per = 3:45, diabetes = "Normal"), type = "response", CIs = TRUE) + xlab("Ejection Fraction") + ylab("Probability")+
+scale_x_discrete(breaks = paste(3:45, "Normal")[seq(from = 3, to = 45, by=5)], labels = c(3:45)
+[seq(from = 3, to=45, by = 5)]) + labs(color = 'treatment') + ggtitle("No Diabetes")
+
+p2 = emmip (model.fit4, trtmt ~ ejf_per *diabetes, 
+at = list(ejf_per = 3:45, diabetes = "Diabetes"), type = "response", CIs = TRUE) + xlab("Ejection Fraction") + ylab("Probability")+
+scale_x_discrete(breaks = paste(3:45, "Diabetes")[seq(from = 3, to = 45, by=5)], labels = c(3:45)
+[seq(from = 3, to=45, by = 5)]) + labs(color = 'Treatment') + ggtitle("Diabetes")
+ggpubr::ggarrange(p1,p2, common.legend = TRUE, legend = "bottom")
+```
+
+## conclusion
+
+our final model is as following:
+
+\$ logit(\\mu_i) = \\beta_0 + \\beta_1 \\times diabetes_i + \\beta_2 \\times diguse_i + \\beta_3 \\times ejf\\\_per_i + \\beta_4 \\times ejf\\\_per_i\^2 + \\beta_4 \\times treatment_i + \\beta_5 \\times diabetes_i \\times treatment_i + \\beta_6 \\times ejf\\\_per_i \\times treatment_i \$ where the model is \$ Y \~ Binomial (n_i, p_i) \$
+
+Our final model was fitted in the binomial distribution. The logit \$ \\mu_i \$ is the log odds of death or hospitalization with heath failure.
+
+The following betas are the dummy variable:
+
+-   beta 1 is 1 when patient has a history of diabetes
+
+-   beta 2 is 1 when patient has a history of previous Dignoxin use
+
+-   beta 4 is 1 when patient allowcated to Dignoxin treatment group.
+
+From our analysis, the variables that affect the probability of death or hospitalization with heath failure are: history of diabetes, dignoxin within past week, ejection rate and the treatment. We have ommited age and gender where the p-value showed insignificant relationship on the odds of death or hospitalisation with heart failure. The research question was interested in whether taking dignosin can change the rate of death or hospitalization due to heath failure. From our analysis, we found that there are interactions between the treatment with history of diabetes and treatment with ejection fraction.
+
+At the average ejection fraction (28.64%):
+
+-   The patient that has diabetes history, the odds ratio of death or hospitalization with heath failure is 1.17 so the effect of treatment is similar between the two groups.
+
+-   The patient with no history of diabetes, the odds ration of death or hospitalization with heart failure is 1.5 which means that the odds of death or hospitalization with heart failure is higher in the placebo group compares to the Dignoxin group.
+
+-   Tthe odds ration of death or hospitalization with heart failure is estimated to be 1.01 - 1.83 more when the patient have diabetes history and treatment is dignoxin.
+
+When the patient has no diabetes history:
+
+-   The lower the ejection fraction, the odds ration of death or hospitalization with heart failure in both placebo and dignoxin but the placebo group has the higer odds than the dignoxin group.
+
+-   As the ejection fraction increases, the odds also decreases
+
+-   At the ejection fraction of 45%, the odds are almost the same in both treatment group but the placebo is slightly higher.
+
+When the patient has diabetes history:
+
+-   The lower the ejection fraction, the odds ration of death or hospitalization with heart failure in both placebo and dignoxin but the placebo group has the higer odds than the dignoxin group.
+
+-   As the ejection fraction increases, the odds also decreases
+
+-   However, as approximately 30% ejection fraction, the odds have become equivalent in both groups.
