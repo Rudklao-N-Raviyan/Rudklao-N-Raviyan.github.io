@@ -17,24 +17,24 @@ about:
 
 :::{#ppc}
 
-Hello and Sawasdee ka!
+Hello!
 
-My name is Newz and a recent graduate in Statistics. Currently based in Auckland, New Zealand.
+My name is Newz, and I am a recent graduate in Statistics currently based in Auckland, New Zealand.
 
 # CV at a Glance
 
 ## Work Experience
 
-* Events - Coordinator/ Management Trainee | Shangri-La Hotel, Chiang Mai, Thailand. (2018 - 2020)
+* Events - Coordinator/Management Trainee | Shangri-La Hotel, Chiang Mai, Thailand. (2018 - 2020)
 
-* After Scool Elementary School Teacher | Hapdo Elementary, Dangjin, South Korea (2015 - 2017)
+* After School Elementary School Teacher | Hapdo Elementary, Dangjin, South Korea (2015 - 2017)
 
 ## Education
 
-* Graduate Diploma in Arts - Statistics, University of Auckland, New Zealand. (2022 - 2023)
+* Graduate Diploma in Arts - Statistics, University of Auckland, New Zealand (2022 - 2023)
 
-* Graduate Diploa in Business Studies, Massey University, New Zealand. (2018 - 2022)
+* Graduate Diploma in Business Studies, Massey University, New Zealand (2018 - 2022)
 
-* Bachelor of Science - Biomedical Science, University of Auckland, New Zealand. (2012 - 2015)
+* Bachelor of Science - Biomedical Science, University of Auckland, New Zealand (2012 - 2015)
 
 :::
